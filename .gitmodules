@@ -1,0 +1,6 @@
+[submodule "pogigwasc-utils"]
+	path = pogigwasc-utils
+	url = git@github.com:Swart-lab/pogigwasc-utils.git
+[submodule "pogigwasc"]
+	path = pogigwasc
+	url = git@github.com:Swart-lab/pogigwasc.git
