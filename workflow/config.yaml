@@ -1,8 +1,3 @@
-# EXAMPLE: Paths to raw data
-rawdata:
-  sample_A: example/data_A
-  sample_B: example/data_B
-
-samplenames:
-  - sample_A
-  - sample_B
+falcon-comb_LmagMIC:
+  ref_intronless_masked:
+    /ebio/abt2_projects/ag-swart-loxodes/annotation/falcon-comb_LmagMIC/intronarrator/falcon-comb_LmagMIC.0.2.minus_introns.ncRNA_hard_masked.fa

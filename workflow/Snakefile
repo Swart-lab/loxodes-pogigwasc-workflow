@@ -1,17 +1,74 @@
-# If rules are split across multiple snakefiles, list them here
-# include: "rules-A"
-# include: "rules-B"
-
 rule all:
     input:
-        expand("{sample}.out", sample=config['samplenames'])
+        'falcon-comb_LmagMIC.split_pogigwasc'
 
-rule dosomething:
+rule run_parafly:
     input:
-        lambda wildcards: config['rawdata'][wildcards.sample]
+        '{asm}.parafly_cmds.list'
     output:
-        "{sample}.out"
-    # conda: "example.yml"
-    threads: 1
+        completed='{asm}.parafly_cmds.list.completed',
+        outdir=directory('{asm}.split_pogigwasc'),
+        outdir_logs=directory('{asm}.split_pogigwasc_logs')
+    log: 'logs/run_parafly.{asm}.log'
+    threads: 8
+    conda: 'envs/parafly.yml'
+    params:
+        failed_cmds='{asm}.parafly_cmds.list.failed'
+    # nb each job requires about 2 Gb of memory
     shell:
-        "cat {input} > {output}"
+        r"""
+        mkdir -p {output.outdir};
+        mkdir -p {output.outdir_logs};
+        ParaFly -c {input} -CPU {threads} -failed_cmds {params.failed_cmds} -vv &> {log};
+        """
+
+rule make_cmds:
+    """Make commands for running pogigwasc with ParaFly"""
+    input:
+        '{asm}.split_fasta/'
+    output:
+        '{asm}.parafly_cmds.list'
+    params:
+        pogigwasc_param='pogigwasc/resources/de/vetter/pogigwasc/parameter/parameters-examplefile.properties'
+    shell:
+        r"""
+        for i in {input}/spl*; do
+          SPLNAME=$(basename $i);
+          SPLPREFIX=${{SPLNAME%%.fa}};
+          SPLOUT={wildcards.asm}.split_pogigwasc/${{SPLPREFIX}}.gff3;
+          echo "pogigwasc/target/appassembler/bin/ghmm-predict -i $i --no-introns -p {params.pogigwasc_param} -o $SPLOUT > {wildcards.asm}.split_pogigwasc_logs/${{SPLPREFIX}}.log" >> {output};
+        done
+        """
+    # example of a command
+    # ../pogigwasc/target/appassembler/bin/ghmm-predict -i contig_9482.fasta \
+    #  --no-introns \
+    #  -p ../pogigwasc/resources/de/vetter/pogigwasc/parameter/parameters-examplefile.properties \
+    #  -o contig_9482.pogiwasc.gff3
+
+
+rule split_scaffolds:
+    """Split intronless ref assembly on Ns to produce pure contigs
+
+    Reference assembly: introns spliced out, also contains scaffolding gaps and
+    hard masked ncRNA genes. Split on Ns to produce pure contigs (absolutely no
+    Ns) as required by Pogigwasc
+    """
+    input: 
+        lambda wildcards: config[wildcards.asm]['ref_intronless_masked']
+    output: 
+        split='{asm}.0.2.minus_introns.ncRNA_hard_masked.split.fasta',
+        split_min1k='{asm}.0.2.minus_introns.ncRNA_hard_masked.split.min1k.fasta',
+        split_fasta=directory('{asm}.split_fasta')
+    params:
+        out_prefix='{asm}.0.2.minus_introns.ncRNA_hard_masked.split'
+    conda: 'envs/intronarrator.yml'
+    shell:
+        r"""
+        python pogigwasc-utils/split_scaffolds.py --input {input} --output {params.out_prefix};
+        # make folders to hold split files
+        mkdir -p {output.split_fasta}; 
+        # filter out contigs < 1 kbp unlikely to contain genes
+        opt/kentutils/faFilter -minSize=1000 {output.split} {output.split_min1k}
+        # split into smaller input files to parallelize
+        opt/kentutils/faSplit sequence {output.split_min1k} 200 {output.split_fasta}/spl
+        """
