@@ -4,3 +4,6 @@
 [submodule "pogigwasc"]
 	path = pogigwasc
 	url = git@github.com:Swart-lab/pogigwasc.git
+[submodule "Intronarrator"]
+	path = Intronarrator
+	url = git@github.com:Swart-lab/Intronarrator.git
