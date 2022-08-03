@@ -1,3 +1,9 @@
 falcon-comb_LmagMIC:
+  ref_orig:
+    /ebio/abt2_projects/ag-swart-loxodes/assembly/falcon-comb_LmagMIC/scaffolds.fasta
   ref_intronless_masked:
     /ebio/abt2_projects/ag-swart-loxodes/annotation/falcon-comb_LmagMIC/intronarrator/falcon-comb_LmagMIC.0.2.minus_introns.ncRNA_hard_masked.fa
+  realtrons_gff:
+    /ebio/abt2_projects/ag-swart-loxodes/annotation/falcon-comb_LmagMIC/intronarrator/all.realtrons.0.2.noalt.gff
+  trf_min1000:
+    /ebio/abt2_projects/ag-swart-loxodes/annotation/falcon-comb_LmagMIC/trf/falcon-comb_LmagMIC.trf.no_overlap.min1000.merge.bed

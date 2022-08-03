@@ -1,6 +1,87 @@
 rule all:
     input:
-        'falcon-comb_LmagMIC.split_pogigwasc'
+        'falcon-comb_LmagMIC.pogigwasc_realtrons.protein.faa',
+        'falcon-comb_LmagMIC.pogigwasc_realtrons.no_rep.protein.faa'
+
+rule translate_proteins_no_overlap_trf:
+    input:
+        ref_orig=lambda wildcards: config[wildcards.asm]['ref_orig'],
+        gff3_norep='falcon-comb_LmagMIC.pogigwasc_realtrons.no_rep.gff3'
+    output:
+        '{asm}.pogigwasc_realtrons.no_rep.protein.faa'
+    conda: 'envs/pogigwasc.yml'
+    params:
+        gencode=27,
+        prefix='{asm}.pogigwasc_realtrons.no_rep'
+    shell:
+        r"""
+        python pogigwasc-utils/translate_proteins.py --gff {input.gff3_norep} --assembly {input.ref_orig} --trans_table {params.gencode} --output {params.prefix}
+        """
+
+rule no_overlap_trf:
+    input:
+        realtrons_gff='{asm}.pogigwasc_realtrons.gff3',
+        trf=lambda wildcards: config[wildcards.asm]['trf_min1000']
+    output:
+        '{asm}.pogigwasc_realtrons.no_rep.gff3'
+    conda: 'envs/pogigwasc.yml'
+    shell:
+        r"""
+        bedtools intersect -v -f 1.0 -a {input.realtrons_gff} -b {input.trf} > {output}
+        """
+
+rule translate_proteins:
+    input: 
+        realtrons_gff='{asm}.pogigwasc_realtrons.gff3',
+        ref_orig=lambda wildcards: config[wildcards.asm]['ref_orig']
+    output:
+        '{asm}.pogigwasc_realtrons.protein.faa'
+    params:
+        gencode=27,
+        prefix='{asm}.pogigwasc_realtrons'
+    conda: 'envs/pogigwasc.yml'
+    shell:
+        r"""
+        python pogigwasc-utils/translate_proteins.py --gff {input.realtrons_gff} --assembly {input.ref_orig} --trans_table {params.gencode} --output {params.prefix}
+        """
+
+rule add_realtrons:
+    input:
+        realtrons=lambda wildcards: config[wildcards.asm]['realtrons_gff'],
+        features='{asm}.0.2.minus_introns.ncRNA_hard_masked.recomb.pogigwasc.features.gff3'
+    output: '{asm}.pogigwasc_realtrons.gff3'
+    params: 
+        prefix='{asm}.pogigwasc_realtrons'
+    log: 'logs/add_realtrons.{asm}.log'
+    conda: 'envs/pogigwasc.yml'
+    shell:
+        r"""
+        python pogigwasc-utils/add_realtrons_pogigwasc_intronless.py --introns {input.realtrons} --features {input.features} --output {params.prefix} --dump > {log}
+        """
+
+rule recombine_contigs:
+    """recombine annotation for split scaffolds"""
+    input: 
+        split_pogigwasc='{asm}.0.2.minus_introns.ncRNA_hard_masked.split.min1k.pogigwasc.gff3',
+        split_json='{asm}.0.2.minus_introns.ncRNA_hard_masked.split.json'
+    output:
+        '{asm}.0.2.minus_introns.ncRNA_hard_masked.recomb.pogigwasc.features.gff3'
+    conda: 'envs/pogigwasc.yml'
+    params:
+        prefix='{asm}.0.2.minus_introns.ncRNA_hard_masked.recomb.pogigwasc'
+    shell:
+        r"""
+        python pogigwasc-utils/recombine_contigs.py --json {input.split_json} --features {input.split_pogigwasc} --output {params.prefix}
+        """
+
+rule concatenate_GFF:
+    """concatenate Pogigwasc GFF files"""
+    input: '{asm}.split_pogigwasc'
+    output: '{asm}.0.2.minus_introns.ncRNA_hard_masked.split.min1k.pogigwasc.gff3'
+    shell:
+        r"""
+        cat {input}/*.gff3 > {output}
+        """
 
 rule run_parafly:
     input:
@@ -57,11 +138,12 @@ rule split_scaffolds:
         lambda wildcards: config[wildcards.asm]['ref_intronless_masked']
     output: 
         split='{asm}.0.2.minus_introns.ncRNA_hard_masked.split.fasta',
+        split_json='{asm}.0.2.minus_introns.ncRNA_hard_masked.split.json',
         split_min1k='{asm}.0.2.minus_introns.ncRNA_hard_masked.split.min1k.fasta',
         split_fasta=directory('{asm}.split_fasta')
     params:
         out_prefix='{asm}.0.2.minus_introns.ncRNA_hard_masked.split'
-    conda: 'envs/intronarrator.yml'
+    conda: 'envs/pogigwasc.yml'
     shell:
         r"""
         python pogigwasc-utils/split_scaffolds.py --input {input} --output {params.out_prefix};
