@@ -1,7 +1,64 @@
 rule all:
     input:
         'falcon-comb_LmagMIC.pogigwasc_realtrons.protein.faa',
-        'falcon-comb_LmagMIC.pogigwasc_realtrons.no_rep.protein.faa'
+        'falcon-comb_LmagMIC.pogigwasc_realtrons.no_rep.protein.faa',
+        'falcon-comb_LmagMIC.cmsearch.filtered.gff',
+        'falcon-comb_LmagMIC.tRNAscan-SE'
+
+
+rule convert_tRNAscan_gff: # troubleshooting required
+    input:
+        '{asm}.tRNAscan-SE',
+    output:
+        '{asm}.tRNAscan-SE.gff'
+    conda: 'envs/pogigwasc.yml'
+    shell:
+        r"""
+        Intronarrator/ncRNA_searches/tRNAscan-SE_to_GFF.py {input} > {output}
+        """
+
+rule spilt_ref_tRNA:
+    input:
+        ref_orig=lambda wildcards: config[wildcards.asm]['ref_orig']
+    output:
+        tr='{asm}.tRNAscan-SE',
+        tr_aln='{asm}.tRNAscan-SE.aln'
+    params:
+        fa='{asm}.split_seqs',
+        numsplit=100
+    conda: 'envs/pogigwasc.yml'
+    threads: 8
+    shell:
+        r"""
+        mkdir -p {params.fa};
+        opt/kentutils/faSplit sequence {input.ref_orig} {params.numsplit} {params.fa}/spl;
+        for i in {params.fa}/spl*; do
+          tRNAscan-SE --thread {threads} -E -o ${{i}}.tRNAscan-SE -f ${{i}}.tRNAscan-SE.aln ${{i}};
+        done
+        cat {params.fa}/spl*.tRNAscan-SE.aln > {output.tr_aln};
+        head -n3 {params.fa}/spl000.fa.tRNAscan-SE > {output.tr};
+        for i in {params.fa}/spl*.tRNAscan-SE; do
+            tail -n+4 >> {output.tr};
+        done
+        """
+
+rule find_filter_ncRNAs:
+    input:
+        ref_orig=lambda wildcards: config[wildcards.asm]['ref_orig']
+    output:
+        tblout='{asm}.cmsearch',
+        aln='{asm}.cmsearch.aln',
+        tblout_filtered='{asm}.cmsearch.filtered',
+        tblout_filtered_gff='{asm}.cmsearch.filtered.gff'
+    conda: 'envs/pogigwasc.yml'
+    ##Find ncRNAs (including tRNAs) and output GFFs for them
+    threads: 16
+    shell:
+        r"""
+        cmsearch --cpu {threads} --tblout {output.tblout} Intronarrator/db/rfam_minimal.cm {input.ref_orig} > {output.aln};
+        Intronarrator/ncRNA_searches/infernal_filter.py {output.tblout} > {output.tblout_filtered};
+        Intronarrator/ncRNA_searches/infernal_to_GFF.py {output.tblout_filtered} > {output.tblout_filtered_gff};
+        """
 
 rule translate_proteins_no_overlap_trf:
     input:
