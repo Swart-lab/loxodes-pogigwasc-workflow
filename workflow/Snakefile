@@ -2,9 +2,9 @@ rule all:
     input:
         'falcon-comb_LmagMIC.pogigwasc_realtrons.protein.faa',
         'falcon-comb_LmagMIC.pogigwasc_realtrons.no_rep.protein.faa',
+        'falcon-comb_LmagMIC.pogigwasc_realtrons.in_rep.protein.faa',
         'falcon-comb_LmagMIC.cmsearch.filtered.gff',
         'falcon-comb_LmagMIC.tRNAscan-SE'
-
 
 rule convert_tRNAscan_gff: # troubleshooting required
     input:
@@ -58,6 +58,23 @@ rule find_filter_ncRNAs:
         cmsearch --cpu {threads} --tblout {output.tblout} Intronarrator/db/rfam_minimal.cm {input.ref_orig} > {output.aln};
         Intronarrator/ncRNA_searches/infernal_filter.py {output.tblout} > {output.tblout_filtered};
         Intronarrator/ncRNA_searches/infernal_to_GFF.py {output.tblout_filtered} > {output.tblout_filtered_gff};
+        """
+
+rule proteins_in_overlap_trf:
+    """Instead of applying bedtools intersect to the GFF, we simply subtract
+    protein sequences that do not overlap repeats from set of all protein
+    sequences, to avoid problems caused by CDSs that overlap partially with
+    repeat annotations"""
+    input:
+        no_rep='{asm}.pogigwasc_realtrons.no_rep.protein.faa',
+        all='{asm}.pogigwasc_realtrons.protein.faa'
+    output:
+        no_rep_list='{asm}.pogigwasc_realtrons.no_rep.protein.list',
+        in_rep_faa='{asm}.pogigwasc_realtrons.in_rep.protein.faa'
+    shell:
+        r"""
+        grep '>' {input.no_rep} | sed 's/>//' | cut -f1 -d' ' > {output.no_rep_list};
+        opt/kentutils/faSomeRecords -exclude {input.all} {output.no_rep_list} {output.in_rep_faa};
         """
 
 rule translate_proteins_no_overlap_trf:
