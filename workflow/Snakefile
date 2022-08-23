@@ -38,7 +38,7 @@ rule spilt_ref_tRNA:
         cat {params.fa}/spl*.tRNAscan-SE.aln > {output.tr_aln};
         head -n3 {params.fa}/spl000.fa.tRNAscan-SE > {output.tr};
         for i in {params.fa}/spl*.tRNAscan-SE; do
-            tail -n+4 >> {output.tr};
+            tail -n+4 ${{i}} >> {output.tr};
         done
         """
 
