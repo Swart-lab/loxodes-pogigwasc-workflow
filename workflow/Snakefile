@@ -1,5 +1,6 @@
 rule all:
     input:
+        'falcon-comb_LmagMIC.pogigwasc_realtrons.gff3',
         'falcon-comb_LmagMIC.pogigwasc_realtrons.protein.faa',
         'falcon-comb_LmagMIC.pogigwasc_realtrons.no_rep.protein.faa',
         'falcon-comb_LmagMIC.pogigwasc_realtrons.in_rep.protein.faa',
@@ -139,7 +140,7 @@ rule recombine_contigs:
         split_pogigwasc='{asm}.0.2.minus_introns.ncRNA_hard_masked.split.min1k.pogigwasc.gff3',
         split_json='{asm}.0.2.minus_introns.ncRNA_hard_masked.split.json'
     output:
-        '{asm}.0.2.minus_introns.ncRNA_hard_masked.recomb.pogigwasc.features.gff3'
+        temp('{asm}.0.2.minus_introns.ncRNA_hard_masked.recomb.pogigwasc.features.gff3')
     conda: 'envs/pogigwasc.yml'
     params:
         prefix='{asm}.0.2.minus_introns.ncRNA_hard_masked.recomb.pogigwasc'
@@ -151,7 +152,7 @@ rule recombine_contigs:
 rule concatenate_GFF:
     """concatenate Pogigwasc GFF files"""
     input: '{asm}.split_pogigwasc'
-    output: '{asm}.0.2.minus_introns.ncRNA_hard_masked.split.min1k.pogigwasc.gff3'
+    output: temp('{asm}.0.2.minus_introns.ncRNA_hard_masked.split.min1k.pogigwasc.gff3')
     shell:
         r"""
         cat {input}/*.gff3 > {output}
@@ -211,10 +212,10 @@ rule split_scaffolds:
     input: 
         lambda wildcards: config[wildcards.asm]['ref_intronless_masked']
     output: 
-        split='{asm}.0.2.minus_introns.ncRNA_hard_masked.split.fasta',
-        split_json='{asm}.0.2.minus_introns.ncRNA_hard_masked.split.json',
-        split_min1k='{asm}.0.2.minus_introns.ncRNA_hard_masked.split.min1k.fasta',
-        split_fasta=directory('{asm}.split_fasta')
+        split=temp('{asm}.0.2.minus_introns.ncRNA_hard_masked.split.fasta'),
+        split_json=temp('{asm}.0.2.minus_introns.ncRNA_hard_masked.split.json'),
+        split_min1k=temp('{asm}.0.2.minus_introns.ncRNA_hard_masked.split.min1k.fasta'),
+        split_fasta=temp(directory('{asm}.split_fasta'))
     params:
         out_prefix='{asm}.0.2.minus_introns.ncRNA_hard_masked.split'
     conda: 'envs/pogigwasc.yml'
